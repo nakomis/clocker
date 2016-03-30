@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.Beta;
+import com.google.common.base.Function;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Iterables;
 import com.google.common.reflect.TypeToken;
@@ -34,10 +35,10 @@ import org.apache.brooklyn.core.config.ConfigKeys;
 import org.apache.brooklyn.core.entity.EntityPredicates;
 import org.apache.brooklyn.util.collections.MutableMap;
 import org.apache.brooklyn.util.core.flags.SetFromFlag;
-import org.apache.brooklyn.util.core.mutex.SemaphoreWithOwners;
 import org.apache.brooklyn.util.core.mutex.WithMutexes;
 import org.apache.brooklyn.util.core.task.Tasks;
 
+import brooklyn.entity.container.docker.DockerContainer;
 import brooklyn.location.docker.DockerHostLocation;
 
 /**
@@ -88,8 +89,13 @@ public class GroupPlacementStrategy extends BasicDockerPlacementStrategy impleme
         }
 
         boolean requireExclusive = config().get(REQUIRE_EXCLUSIVE);
-        String dockerApplicationId = input.getOwner().getApplicationId();
-        Iterable<Entity> deployed = Iterables.filter(input.getDockerContainerList(), Predicates.not(EntityPredicates.applicationIdEqualTo(dockerApplicationId)));
+        Iterable<Entity> deployed = Iterables.filter(Iterables.transform(input.getDockerContainerList(),
+                new Function<Entity, Entity>() {
+                    @Override
+                    public Entity apply(Entity input) {
+                        return entity.sensors().get(DockerContainer.ENTITY);
+                    }
+                }), Predicates.notNull());
         Entity parent = entity.getParent();
         String applicationId = entity.getApplicationId();
 
